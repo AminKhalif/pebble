@@ -36,7 +36,7 @@ export function Mascot({
           strokeDashoffset: 1,
           animation: "pebble-sketch 1.6s ease-out forwards",
         },
-      } as React.SVGProps<SVGPathElement>)
+      } as { style: React.CSSProperties })
     : {}
 
   const featureOpacity = hideFeatures ? 0 : 1
@@ -108,7 +108,7 @@ export function Mascot({
 type SubProps = {
   accent: string
   pose: MascotPose
-  drawProps: React.SVGProps<SVGPathElement>
+  drawProps: { style?: React.CSSProperties }
   featureStyle: React.CSSProperties
 }
 

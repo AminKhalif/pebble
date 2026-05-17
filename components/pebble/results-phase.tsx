@@ -358,7 +358,7 @@ ${result.persona.samples.map((s) => " · " + s).join("\n")}`
     <div className="col-span-12 lg:col-span-6">
       <SectionLabel>04 / voice & persona</SectionLabel>
       <div className="mt-4 font-serif text-[36px] leading-[1.05] text-ink">
-        How Pebble speaks
+        How {result.mascot.name} speaks
       </div>
 
       <div className="mt-6 grid grid-cols-2 gap-6">
@@ -468,7 +468,7 @@ function PreviewSection({ result }: { result: MockResult }) {
     <div>
       <SectionLabel>05 / in-product preview</SectionLabel>
       <div className="mt-4 font-serif text-[36px] leading-[1.05] text-ink">
-        Where Pebble shows up
+        Where {result.mascot.name} shows up
       </div>
       <InProductPreview result={result} />
     </div>

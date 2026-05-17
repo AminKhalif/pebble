@@ -139,15 +139,15 @@ export function InProductPreview({ result }: { result: MockResult }) {
 }
 
 function HomepageView({ result, accent }: { result: MockResult; accent: string }) {
+  const navItems = result.previewSurfaces?.navItems ?? ["product", "customers", "pricing", "docs"]
   return (
     <div>
       <div className="flex items-center justify-between">
         <div className="font-serif text-[20px] text-ink">{result.company.name}</div>
         <div className="flex items-center gap-5 font-mono text-[11px] lowercase text-ink-soft">
-          <span>product</span>
-          <span>customers</span>
-          <span>pricing</span>
-          <span>docs</span>
+          {navItems.map((item) => (
+            <span key={item}>{item}</span>
+          ))}
         </div>
       </div>
 
@@ -182,7 +182,7 @@ function HomepageView({ result, accent }: { result: MockResult; accent: string }
 }
 
 function OnboardingView({ result, accent }: { result: MockResult; accent: string }) {
-  const steps = [
+  const steps = result.previewSurfaces?.onboardingSteps ?? [
     { title: "Create your workspace", done: true },
     { title: "Invite your first teammate", done: true },
     { title: "Connect a starting tool", done: false },
@@ -217,7 +217,7 @@ function OnboardingView({ result, accent }: { result: MockResult; accent: string
 }
 
 function SupportView({ result, accent }: { result: MockResult; accent: string }) {
-  const articles = [
+  const articles = result.previewSurfaces?.supportArticles ?? [
     "How do I invite my team?",
     "Pricing plans, plainly explained",
     "What gets exported, and how",
@@ -250,7 +250,7 @@ function SupportView({ result, accent }: { result: MockResult; accent: string })
 }
 
 function ActivationView({ result, accent }: { result: MockResult; accent: string }) {
-  const checklist = [
+  const checklist = result.previewSurfaces?.activationChecklist ?? [
     { label: "First teammate invited", done: true },
     { label: "First project created", done: true },
     { label: "First milestone shipped", done: false },
@@ -277,7 +277,7 @@ function ActivationView({ result, accent }: { result: MockResult; accent: string
         ))}
       </div>
       <div className="mt-6 inline-flex items-center gap-2 font-mono text-[11px] lowercase" style={{ color: accent }}>
-        <span>→ unlock home dashboard</span>
+        <span>→ {result.previewSurfaces?.activationUnlockText ?? "unlock home dashboard"}</span>
       </div>
     </div>
   )

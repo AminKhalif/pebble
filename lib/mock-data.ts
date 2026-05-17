@@ -38,6 +38,13 @@ export type MockResult = {
     support: string
     activation: string
   }
+  previewSurfaces?: {
+    navItems: string[]
+    onboardingSteps: { title: string; done: boolean }[]
+    supportArticles: string[]
+    activationChecklist: { label: string; done: boolean }[]
+    activationUnlockText: string
+  }
 }
 
 const notion: MockResult = {

@@ -7,9 +7,11 @@ import { exampleUrls } from "@/lib/mock-data"
 
 type Props = {
   onSubmit: (url: string) => void
+  isGenerating?: boolean
+  error?: string | null
 }
 
-export function InputPhase({ onSubmit }: Props) {
+export function InputPhase({ onSubmit, isGenerating = false, error }: Props) {
   const [url, setUrl] = useState("")
 
   function submit(value: string) {
@@ -64,11 +66,13 @@ export function InputPhase({ onSubmit }: Props) {
               />
               <button
                 type="submit"
+                disabled={isGenerating}
                 className="h-12 rounded-r-md bg-ink px-5 font-mono text-[12px] lowercase text-paper-lift transition-colors hover:bg-[#0F0E0B]"
               >
-                begin worksheet →
+                {isGenerating ? "drafting…" : "begin worksheet →"}
               </button>
             </form>
+            {error && <div className="mt-3 max-w-[560px] font-mono text-[11px] lowercase text-[#9A3A24]">{error}</div>}
 
             <div className="mt-6 flex flex-wrap items-center gap-2">
               <span className="font-mono text-[11px] lowercase text-ink-soft">examples:</span>
@@ -76,6 +80,7 @@ export function InputPhase({ onSubmit }: Props) {
                 <button
                   key={u}
                   onClick={() => {
+                    if (isGenerating) return
                     setUrl(u)
                     submit(u)
                   }}
