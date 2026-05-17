@@ -1,23 +1,23 @@
 "use client"
 
 import { motion } from "framer-motion"
+import Link from "next/link"
 import { useState } from "react"
 import { Mascot } from "./mascot"
-import { exampleUrls } from "@/lib/mock-data"
+import { demoOrder, demoPaths } from "@/lib/demo-examples"
 
 type Props = {
-  onSubmit: (url: string) => void
-  isGenerating?: boolean
   error?: string | null
 }
 
-export function InputPhase({ onSubmit, isGenerating = false, error }: Props) {
-  const [url, setUrl] = useState("")
+const demoMessage = "Live generation is rate-limited. Try one of the four examples below."
 
-  function submit(value: string) {
-    const v = value.trim()
-    if (!v) return
-    onSubmit(v)
+export function InputPhase({ error }: Props) {
+  const [url, setUrl] = useState("")
+  const [showDemoMessage, setShowDemoMessage] = useState(false)
+
+  function showTooltip() {
+    setShowDemoMessage(true)
   }
 
   return (
@@ -53,7 +53,7 @@ export function InputPhase({ onSubmit, isGenerating = false, error }: Props) {
             <form
               onSubmit={(e) => {
                 e.preventDefault()
-                submit(url)
+                showTooltip()
               }}
               className="mt-3 flex w-full max-w-[560px] items-stretch gap-0"
             >
@@ -61,33 +61,34 @@ export function InputPhase({ onSubmit, isGenerating = false, error }: Props) {
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="notion.so"
+                placeholder="Demo mode — try an example below"
                 className="h-12 flex-1 rounded-l-md border border-r-0 border-ink bg-paper px-4 font-mono text-[13px] text-ink placeholder:text-ink-soft/60 focus:outline-none focus:ring-0"
               />
               <button
                 type="submit"
-                disabled={isGenerating}
                 className="h-12 rounded-r-md bg-ink px-5 font-mono text-[12px] lowercase text-paper-lift transition-colors hover:bg-[#0F0E0B]"
               >
-                {isGenerating ? "drafting…" : "begin worksheet →"}
+                begin worksheet →
               </button>
             </form>
+            {showDemoMessage && (
+              <div className="mt-3 max-w-[560px] font-mono text-[11px] lowercase text-ink-soft">
+                {demoMessage}
+              </div>
+            )}
             {error && <div className="mt-3 max-w-[560px] font-mono text-[11px] lowercase text-[#9A3A24]">{error}</div>}
 
             <div className="mt-6 flex flex-wrap items-center gap-2">
               <span className="font-mono text-[11px] lowercase text-ink-soft">examples:</span>
-              {exampleUrls.map((u) => (
-                <button
+              {demoOrder.map((u) => (
+                <Link
                   key={u}
-                  onClick={() => {
-                    if (isGenerating) return
-                    setUrl(u)
-                    submit(u)
-                  }}
+                  href={demoPaths[u]}
+                  onClick={() => setShowDemoMessage(false)}
                   className="rounded-sm border border-rule bg-paper-lift px-2 py-1 font-mono text-[11px] text-ink transition-colors hover:border-ink"
                 >
                   {u}
-                </button>
+                </Link>
               ))}
             </div>
           </div>
@@ -158,9 +159,6 @@ export function InputPhase({ onSubmit, isGenerating = false, error }: Props) {
       <div className="mt-24 flex items-center justify-between border-t border-rule pt-4">
         <div className="font-mono text-[10px] lowercase text-ink-soft">
           a mascot your users would actually want to meet
-        </div>
-        <div className="font-mono text-[10px] lowercase text-ink-soft">
-          frontend prototype / no backend
         </div>
       </div>
     </motion.div>

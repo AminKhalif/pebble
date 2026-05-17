@@ -14,6 +14,26 @@ type Props = {
 
 export function ResultsPhase({ result, onStartOver, onRegenerate }: Props) {
   const accent = result.colors[0].hex
+  const [shareState, setShareState] = useState<"idle" | "copied">("idle")
+
+  const handleShare = () => {
+    const shareUrl = typeof window === "undefined" ? result.company.url : window.location.href
+    if (typeof window === "undefined") return
+    const browserNavigator = window.navigator as Navigator & {
+      share?: (data: ShareData) => Promise<void>
+      clipboard?: Clipboard
+    }
+    if (browserNavigator.share) {
+      void browserNavigator.share({
+        title: `${result.company.name} mascot worksheet`,
+        url: shareUrl,
+      })
+      return
+    }
+    void browserNavigator.clipboard?.writeText(shareUrl)
+    setShareState("copied")
+    setTimeout(() => setShareState("idle"), 1800)
+  }
 
   return (
     <motion.div
@@ -23,18 +43,38 @@ export function ResultsPhase({ result, onStartOver, onRegenerate }: Props) {
       transition={{ duration: 0.5, ease: [0.22, 0.61, 0.36, 1] }}
       className="relative mx-auto max-w-[1280px] px-6 pt-6 pb-24"
     >
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <button
+          onClick={onStartOver}
+          className="group inline-flex items-center gap-2 font-mono text-[11px] lowercase text-ink-soft transition-colors hover:text-ink"
+        >
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-rule bg-paper-lift transition-colors group-hover:border-ink">
+            ←
+          </span>
+          back to examples
+        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleShare}
+            className="rounded-full border border-rule bg-paper-lift px-3 py-1.5 font-mono text-[11px] lowercase text-ink-soft transition-colors hover:border-ink hover:text-ink"
+          >
+            {shareState === "copied" ? "link copied" : "share"}
+          </button>
+          <a
+            href={`mailto:sales@hallway.ai?subject=${encodeURIComponent(`${result.company.name} mascot worksheet`)}`}
+            className="rounded-full bg-ink px-3 py-1.5 font-mono text-[11px] lowercase text-paper-lift transition-colors hover:bg-[#0F0E0B]"
+          >
+            talk to a sales rep
+          </a>
+        </div>
+      </div>
+
       {/* worksheet header strip */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-y border-rule py-3">
         <div className="font-mono text-[11px] lowercase text-ink-soft">
           pebble worksheet № 0042 · 17.05.26 · subject: {result.company.url}
         </div>
         <div className="flex items-center gap-5">
-          <button
-            onClick={onStartOver}
-            className="font-mono text-[11px] lowercase text-ink-soft transition-colors hover:text-ink"
-          >
-            start over
-          </button>
           <button
             onClick={onRegenerate}
             className="font-mono text-[11px] lowercase text-ink-soft transition-colors hover:text-ink"

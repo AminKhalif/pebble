@@ -7,6 +7,21 @@ export type BrandSignals = {
   category?: string
 }
 
+export type TargetEvidence = {
+  companyName: string
+  domain: string
+  url: string
+  tagline: string
+  category?: string
+  palette: string[]
+  navLabels: string[]
+  productSurfaces: string[]
+  workflows: string[]
+  terminology: string[]
+  proofSnippets: string[]
+  confidence: number
+}
+
 export type BrandInsight = {
   productJob: string
   uxChallenge: string
@@ -57,6 +72,7 @@ export type RubricScore = {
 
 export type PipelineResult = {
   signals: BrandSignals
+  evidence: TargetEvidence
   insight: BrandInsight
   premise: MascotPremise
   voice: VoiceRules
@@ -93,4 +109,3 @@ export type StageEvent = {
   elapsed: number
   preview?: string
 }
-

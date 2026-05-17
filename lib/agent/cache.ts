@@ -22,7 +22,9 @@ export async function readCachedResult(rawUrl: string) {
   try {
     const info = await stat(path)
     if (Date.now() - info.mtimeMs > CACHE_TTL_MS) return null
-    return JSON.parse(await readFile(path, "utf8")) as PipelineResult
+    const cached = JSON.parse(await readFile(path, "utf8")) as Partial<PipelineResult>
+    if (!cached.evidence) return null
+    return cached as PipelineResult
   } catch {
     return null
   }
@@ -41,4 +43,3 @@ export function generatedImagePath(rawUrl: string) {
     filePath: join(process.cwd(), "public", "generated", `${slug}.png`),
   }
 }
-

@@ -16,7 +16,16 @@ function parseJson(text: string) {
     .replace(/^```\s*/i, "")
     .replace(/```$/i, "")
     .trim()
-  return JSON.parse(cleaned)
+  try {
+    return JSON.parse(cleaned)
+  } catch {
+    const start = cleaned.indexOf("{")
+    const end = cleaned.lastIndexOf("}")
+    if (start !== -1 && end > start) {
+      return JSON.parse(cleaned.slice(start, end + 1))
+    }
+    throw new Error(`Could not parse JSON response: ${cleaned.slice(0, 120)}`)
+  }
 }
 
 function isRateLimitError(error: unknown) {
@@ -166,13 +175,27 @@ async function cloudflareJson<T extends JsonRecord>({
 }
 
 async function fallbackJson<T extends JsonRecord>(system: string, user: string) {
-  if (process.env.CF_ACCOUNT_ID && process.env.CF_API_TOKEN) {
-    return cloudflareJson<T>({ system, user })
-  }
+  let lastError: unknown
   if (process.env.NVIDIA_API_KEY) {
-    return nvidiaJson<T>({ system, user })
+    try {
+      return await nvidiaJson<T>({ system, user })
+    } catch (error) {
+      lastError = error
+    }
   }
-  return geminiJson<T>({ system, user })
+  try {
+    return await geminiJson<T>({ system, user })
+  } catch (error) {
+    lastError = error
+  }
+  if (process.env.CF_ACCOUNT_ID && process.env.CF_API_TOKEN) {
+    try {
+      return await cloudflareJson<T>({ system, user })
+    } catch (error) {
+      lastError = error
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("All fallback JSON providers failed")
 }
 
 export async function groqJson<T extends JsonRecord>({

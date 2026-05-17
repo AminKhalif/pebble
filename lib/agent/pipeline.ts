@@ -45,7 +45,7 @@ async function timed<T>(
 }
 
 function publicSignals(scraped: ScrapedBrandSignals) {
-  const { palette: _palette, ...signals } = scraped
+  const { palette: _palette, evidence: _evidence, ...signals } = scraped
   return signals
 }
 
@@ -62,16 +62,18 @@ function scoreOnly(score: RubricScore): RubricScore {
 }
 
 function ensurePalette(palette: string[]) {
-  const fallback = ["#1A1814", "#FAF6EC", "#E8E1D1", "#C25A3D"]
-  return [...new Set([...palette, ...fallback])].slice(0, 5)
+  const valid = [...new Set(palette.filter((value) => /^#[0-9a-fA-F]{6}$/.test(value)))].slice(0, 5)
+  return valid.length > 0 ? valid : ["#111111", "#FFFFFF"]
 }
 
 function localRegenerationTargets({
+  evidenceTerms,
   premise,
   voice,
   samples,
   imagePrompt,
 }: {
+  evidenceTerms: string[]
   premise: MascotPremise
   voice: VoiceRules
   samples: SampleMessage[]
@@ -79,12 +81,20 @@ function localRegenerationTargets({
 }) {
   const targets = new Set<"premise" | "voice" | "samples" | "imagePrompt">()
   const premiseText = `${premise.archetype} ${premise.oneSentenceDescription}`.toLowerCase()
-  if (/\b(consultant|coach|assistant|copilot|guide|specialist|systems engineer)\b/.test(premiseText)) {
+  const mascotName = premise.name.trim().toLowerCase()
+  if (/\b(applicant|founder|customer|user|builder|operator|navigator)\b/.test(mascotName)) {
+    targets.add("premise")
+  }
+  if (/\b(consultant|coach|assistant|copilot|guide|navigator|specialist|systems engineer)\b/.test(premiseText)) {
     targets.add("premise")
   }
   const sampleText = samples.map((sample) => sample.message).join(" ").toLowerCase()
+  const triggerText = samples.map((sample) => sample.trigger).join(" ").toLowerCase()
   if (/\b(consider|you might|try|you can also|you could|get started|streamline|teams like yours|check out|feature|template|recommend)\b/.test(sampleText)) {
     targets.add("voice")
+    targets.add("samples")
+  }
+  if (/\b(new user|user on dashboard|user on demo day|user on startup directory|welcome to)\b/.test(`${triggerText} ${sampleText}`)) {
     targets.add("samples")
   }
   const voiceText = [...voice.vocabulary, ...voice.forbiddenWords, voice.toneInOneSentence].join(" ").toLowerCase()
@@ -96,6 +106,12 @@ function localRegenerationTargets({
   if (/\b(friendly rounded|rounded character|nice person|approachable face)\b/.test(imageText)) {
     targets.add("imagePrompt")
   }
+  const allText = `${premise.jobInProduct} ${premise.oneSentenceDescription} ${premise.appearanceCue} ${samples.map((sample) => `${sample.trigger} ${sample.message}`).join(" ")} ${voice.referencesTheyMake}`.toLowerCase()
+  const matchedTerms = evidenceTerms.filter((term) => allText.includes(term.toLowerCase()))
+  if (matchedTerms.length < 3) {
+    targets.add("premise")
+    targets.add("samples")
+  }
   return targets
 }
 
@@ -106,6 +122,7 @@ function applyLocalPenalties(
     voice: VoiceRules
     samples: SampleMessage[]
     imagePrompt: ImagePromptSpec
+    evidenceTerms: string[]
   },
 ) {
   const localTargets = localRegenerationTargets(output)
@@ -116,7 +133,7 @@ function applyLocalPenalties(
     specificity: Math.min(score.specificity, 2),
     pointOfView: Math.min(score.pointOfView, 2),
     overall: Math.min(score.overall, 2.8),
-    reasoning: `${score.reasoning} Local quality gate rejected generic product-tip phrasing or archetypes.`,
+    reasoning: `${score.reasoning} Local quality gate rejected generic product-tip phrasing, archetypes, or lack of target evidence.`,
     regenerate,
   }
 }
@@ -149,6 +166,7 @@ export async function runAgentPipeline(rawUrl: string, progress?: ProgressCallba
   const scraped = await timed(timings, "visiting-homepage", progress, (value) => value.companyName, () =>
     scrapeBrandSignals(rawUrl),
   )
+  const evidence = scraped.evidence
   await progress?.(event("extracting-brand", 0, scraped.tagline))
 
   let insight: BrandInsight = await timed(
@@ -156,70 +174,76 @@ export async function runAgentPipeline(rawUrl: string, progress?: ProgressCallba
     "reading-positioning",
     progress,
     (value) => value.uxChallenge,
-    () => runBrandInsight(publicSignals(scraped)),
+    () => runBrandInsight(publicSignals(scraped), evidence),
   )
   let premise: MascotPremise = await timed(
     timings,
     "finding-premise",
     progress,
     (value) => `${value.name}: ${value.archetype}`,
-    () => runMascotPremise(insight),
+    () => runMascotPremise(insight, evidence),
   )
   let voice: VoiceRules = await timed(
     timings,
     "writing-voice",
     progress,
     (value) => value.toneInOneSentence,
-    () => runVoiceRules(premise),
+    () => runVoiceRules(premise, evidence),
   )
   let samples: SampleMessage[] = await timed(
     timings,
     "drafting-messages",
     progress,
     (value) => value[0]?.message,
-    () => runSampleMessages(premise, voice),
+    () => runSampleMessages(premise, voice, evidence),
   )
   let imagePrompt: ImagePromptSpec = await timed(
     timings,
     "composing-image-prompt",
     progress,
     (value) => value.subject,
-    () => runImagePrompt(premise, ensurePalette(scraped.palette)),
+    () => runImagePrompt(premise, ensurePalette(scraped.palette), evidence),
   )
 
   let regenerationCount = 0
   let rubric = await timed(timings, "reviewing-quality", progress, (value) => `${value.overall}/5`, async () =>
     applyLocalPenalties(await runQualityRubric({
       signals: publicSignals(scraped),
+      evidence,
       insight,
       premise,
       voice,
       samples,
       imagePrompt,
-    }), { premise, voice, samples, imagePrompt }),
+    }), { premise, voice, samples, imagePrompt, evidenceTerms: evidence.terminology }),
   )
 
   while (!isAcceptable(rubric) && regenerationCount < 2) {
     regenerationCount += 1
     const targets = new Set(rubric.regenerate)
-    if (targets.has("premise")) premise = await runMascotPremise(insight)
-    if (targets.has("voice") || targets.has("premise")) voice = await runVoiceRules(premise)
+    if (targets.has("premise")) premise = await runMascotPremise(insight, evidence)
+    if (targets.has("voice") || targets.has("premise")) voice = await runVoiceRules(premise, evidence)
     if (targets.has("samples") || targets.has("voice") || targets.has("premise")) {
-      samples = await runSampleMessages(premise, voice)
+      samples = await runSampleMessages(premise, voice, evidence)
     }
     if (targets.has("imagePrompt") || targets.has("premise")) {
-      imagePrompt = await runImagePrompt(premise, ensurePalette(scraped.palette))
+      imagePrompt = await runImagePrompt(premise, ensurePalette(scraped.palette), evidence)
     }
     rubric = applyLocalPenalties(await runQualityRubric({
       signals: publicSignals(scraped),
+      evidence,
       insight,
       premise,
       voice,
       samples,
       imagePrompt,
-    }), { premise, voice, samples, imagePrompt })
+    }), { premise, voice, samples, imagePrompt, evidenceTerms: evidence.terminology })
     timings[`reviewing-quality-${regenerationCount}`] = 0
     await progress?.(event("reviewing-quality", 0, `${rubric.overall}/5 after round ${regenerationCount}`))
+  }
+
+  if (!isAcceptable(rubric)) {
+    throw new Error(`Generated worksheet failed quality gate (${rubric.overall}/5): ${rubric.reasoning}`)
   }
 
   const imageUrl = await timed(
@@ -232,6 +256,7 @@ export async function runAgentPipeline(rawUrl: string, progress?: ProgressCallba
 
   const result: PipelineResult = {
     signals: publicSignals(scraped),
+    evidence,
     insight,
     premise,
     voice,
