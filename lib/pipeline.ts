@@ -103,15 +103,15 @@ function toResult(
 
 function rejectMockLeak(result: MockResult) {
   const text = JSON.stringify(result)
-  const lower = text.toLowerCase()
-  const ownName = result.company.name.toLowerCase()
-  const forbidden = ["cmd k"]
-  if (!ownName.includes("linear")) forbidden.push("linear")
-  for (const word of forbidden) {
-    if (lower.includes(word)) throw new Error(`Generated worksheet leaked mock placeholder content: ${word}`)
-  }
-  if (!ownName.includes("linear") && /\bVector\b/.test(text)) {
-    throw new Error("Generated worksheet leaked mock placeholder content: Vector")
+  const forbidden = [
+    "Cmd K",
+    "Vector",
+    "This issue's been in review",
+    "Your branch is ahead of main",
+    "Plan in cycles. Ship in pull requests.",
+  ]
+  for (const phrase of forbidden) {
+    if (text.includes(phrase)) throw new Error(`Generated worksheet leaked mock placeholder content: ${phrase}`)
   }
 }
 
@@ -171,9 +171,7 @@ Return voice and persona:
 - appears: 1 sentence on the triggering moment in ${brand.companyName}'s product
 - dos: exactly 3 short directives
 - donts: exactly 3 short prohibitions
-- sampleMessages: exactly 3 short utterances ${mascot.name} would actually say in ${brand.companyName}'s product context. Reference real features, user actions, or language from ${brand.companyName}.
-
-For Y Combinator specifically, sample messages must reference concrete YC concepts like batches, Demo Day, office hours, applications, Startup School, founder updates, MRR, or founders. Do not write generic encouragement.`
+- sampleMessages: exactly 3 short utterances ${mascot.name} would actually say in ${brand.companyName}'s product context. Reference concrete product features, user actions, metrics, workflows, or named surfaces from ${brand.companyName}. Do not write generic encouragement.`
 
   return groqStructured(prompt, voiceAndPersonaSchema)
 }
