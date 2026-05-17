@@ -16,4 +16,6 @@ __v0_jsx-dev-runtime.ts
 node_modules
 .next/
 tsconfig.tsbuildinfo
+lib/agent/cache/*.json
+public/generated/*.png
 .DS_Store

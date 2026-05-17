@@ -165,7 +165,15 @@ function MascotSpecimen({ result, accent }: { result: MockResult; accent: string
       <div className="dot-grid relative mt-6 h-[480px] w-full overflow-hidden border border-rule bg-paper-lift">
         {/* mascot */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <Mascot mascotKey={result.mascot.key} accent={accent} size={340} />
+          {result.imageUrl ? (
+            <img
+              src={result.imageUrl}
+              alt={`${result.mascot.name} generated mascot`}
+              className="max-h-[380px] max-w-[380px] object-contain"
+            />
+          ) : (
+            <Mascot mascotKey={result.mascot.key} accent={accent} size={340} />
+          )}
         </div>
 
         {/* annotations */}

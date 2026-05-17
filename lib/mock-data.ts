@@ -1,3 +1,5 @@
+import type { PipelineResult } from "./agent/types"
+
 export type MockResult = {
   company: {
     name: string
@@ -19,6 +21,8 @@ export type MockResult = {
     annotations: { label: string; target: "body" | "eye" | "corner" | "cheek" }[]
   }
   imagePrompt: string
+  imageUrl?: string
+  agent?: PipelineResult
   persona: {
     voice: string
     appears: string

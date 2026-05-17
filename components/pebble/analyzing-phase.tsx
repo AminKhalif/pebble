@@ -4,42 +4,35 @@ import { motion, AnimatePresence } from "framer-motion"
 import { useEffect, useState } from "react"
 import { Mascot } from "./mascot"
 import type { MockResult } from "@/lib/mock-data"
+import type { StageEvent } from "@/lib/agent/types"
 
 type Props = {
   url: string
-  result: MockResult
+  result: MockResult | null
+  events: StageEvent[]
   onDone: () => void
 }
 
 const STATUS_LINES = [
-  "collecting brand signals...",
-  "pulling palette (5 colors found)",
-  "reading tone... calm, warm, technical",
-  "sketching shape language",
-  "writing voice",
-  "staging preview",
+  "visiting homepage...",
+  "extracting brand signals...",
+  "reading positioning...",
+  "finding premise...",
+  "writing voice rules...",
+  "drafting sample messages...",
+  "composing image prompt...",
+  "reviewing quality...",
+  "generating image...",
 ]
 
-const TIMINGS = {
-  brandHeader: 600,
-  swatches: 1200,
-  tags: 2200,
-  mascotSketch: 3000,
-  annotations: 4000,
-  prompt: 4500,
-  persona: 5200,
-  preview: 5800,
-  done: 6800,
-}
-
-export function AnalyzingPhase({ url, result, onDone }: Props) {
-  const [stage, setStage] = useState(0)
+export function AnalyzingPhase({ url, result, events }: Props) {
   const [headerText, setHeaderText] = useState("")
-  const [statusIndex, setStatusIndex] = useState(0)
+  const stage = events.length
+  const currentLine = events.at(-1)?.preview ?? STATUS_LINES[Math.min(stage, STATUS_LINES.length - 1)]
 
   // typewriter for header
   useEffect(() => {
-    const target = `${result.company.name} · ${result.company.url}`
+    const target = result ? `${result.company.name} · ${result.company.url}` : url
     let i = 0
     const t = setInterval(() => {
       i++
@@ -47,26 +40,16 @@ export function AnalyzingPhase({ url, result, onDone }: Props) {
       if (i >= target.length) clearInterval(t)
     }, 35)
     return () => clearInterval(t)
-  }, [result.company.name, result.company.url])
+  }, [result, url])
 
-  useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = []
-    Object.values(TIMINGS).forEach((delay, idx) => {
-      timers.push(setTimeout(() => setStage(idx + 1), delay))
-    })
-    timers.push(setTimeout(() => onDone(), TIMINGS.done))
-    return () => timers.forEach(clearTimeout)
-  }, [onDone])
-
-  // status line cycling
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStatusIndex((i) => Math.min(i + 1, STATUS_LINES.length - 1))
-    }, 950)
-    return () => clearInterval(interval)
-  }, [])
-
-  const accent = result.colors[0].hex
+  const accent = result?.colors[0]?.hex ?? "#C9C2B0"
+  const colors = result?.colors ?? [
+    { hex: "#C9C2B0", name: "paper" },
+    { hex: "#1A1814", name: "ink" },
+    { hex: "#FAF6EC", name: "cream" },
+  ]
+  const tags = result?.tags ?? ["scraping", "thinking", "drafting"]
+  const samples = result?.persona.samples ?? events.slice(-3).map((event) => event.preview ?? event.stage)
 
   return (
     <motion.div
@@ -85,13 +68,13 @@ export function AnalyzingPhase({ url, result, onDone }: Props) {
         <div className="font-mono text-[11px] lowercase text-ink-soft">
           <AnimatePresence mode="wait">
             <motion.span
-              key={statusIndex}
+              key={events.length}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.25 }}
             >
-              {STATUS_LINES[statusIndex]}
+              {currentLine}
             </motion.span>
           </AnimatePresence>
         </div>
@@ -114,7 +97,7 @@ export function AnalyzingPhase({ url, result, onDone }: Props) {
               palette
             </div>
             <div className="mt-3 flex gap-3">
-              {result.colors.map((c, i) => (
+              {colors.map((c, i) => (
                 <motion.div
                   key={c.hex}
                   initial={{ opacity: 0, y: -16 }}
@@ -149,7 +132,7 @@ export function AnalyzingPhase({ url, result, onDone }: Props) {
               tone
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {result.tags.map((t, i) => (
+              {tags.map((t, i) => (
                 <motion.span
                   key={t}
                   initial={{ opacity: 0 }}
@@ -168,13 +151,13 @@ export function AnalyzingPhase({ url, result, onDone }: Props) {
         <div className="col-span-12 lg:col-span-8">
           <SectionLabel>02 / mascot specimen</SectionLabel>
           <div className="mt-3 font-serif text-[44px] leading-none text-ink">
-            {stage >= 4 ? result.mascot.name : "—"}
+            {stage >= 4 && result ? result.mascot.name : "—"}
           </div>
 
           <div className="dot-grid mt-6 flex h-[400px] items-center justify-center border border-rule bg-paper-lift">
             {stage >= 4 ? (
               <Mascot
-                mascotKey={result.mascot.key}
+                mascotKey={result?.mascot.key ?? "default"}
                 accent={accent}
                 size={300}
                 sketching
@@ -193,7 +176,7 @@ export function AnalyzingPhase({ url, result, onDone }: Props) {
           <SectionLabel>03 / image prompt</SectionLabel>
           <div className="mt-3 min-h-[120px] border border-rule bg-paper-lift p-4 font-mono text-[12px] leading-relaxed text-ink">
             {stage >= 6 ? (
-              <TypingBlock text={result.imagePrompt} />
+              <TypingBlock text={result?.imagePrompt ?? currentLine} />
             ) : (
               <span className="text-ink-soft/60">awaiting brief…</span>
             )}
@@ -204,7 +187,7 @@ export function AnalyzingPhase({ url, result, onDone }: Props) {
         <div className="col-span-12 lg:col-span-5">
           <SectionLabel>04 / voice & persona</SectionLabel>
           <div className="mt-3 space-y-2">
-            {result.persona.samples.map((s, i) => (
+            {samples.map((s, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 6 }}
